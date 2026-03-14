@@ -1,6 +1,6 @@
 {
-    "name": "HP Task Pro",
-    "short_name": "HP Task",
+    "name": "批量查詢工具",
+    "short_name": "批量查詢工具",
     "description": "Homeplus 批量查詢工具",
     "start_url": "./index.html",
     "display": "standalone",
