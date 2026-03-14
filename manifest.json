@@ -1,6 +1,6 @@
 {
-    "name": "批量查詢工具",
-    "short_name": "批量查詢工具",
+    "name": "批量查詢工具v7",
+    "short_name": "v7",
     "description": "Homeplus 批量查詢工具",
     "start_url": "./index.html",
     "display": "standalone",
