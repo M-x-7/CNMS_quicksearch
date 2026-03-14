@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="HP Task Pro">
+    <link rel="manifest" href="manifest.json">
+    <title>HP Task Pro</title>
+    <style>
+        :root {
+            --dark-bg: #1a1a1a;
+            --primary: #4285f4;
+            --visited: #b0b0b0;
+            --bg-color-0: #e3f2fd;
+            --bg-color-1: #e8f5e9;
+            --bg-color-2: #fffde7;
+        }
+        
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 10px 10px 100px 10px; background-color: #f5f5f5; }
+
+        .toggle-zone { display: flex; gap: 10px; margin-bottom: 12px; }
+        .toggle-btn {
+            flex: 1; padding: 15px; font-size: 20px; font-weight: bold;
+            border: none; border-radius: 12px; background-color: var(--dark-bg); color: white;
+        }
+
+        .tag-input-outer {
+            border: 2px solid #ddd; border-radius: 12px; background: white;
+            padding: 6px; margin-bottom: 12px; transition: border-color 0.2s;
+        }
+        .tag-input-outer:focus-within { border-color: var(--primary); }
+
+        .tag-input-container {
+            display: flex; flex-wrap: wrap; align-content: flex-start;
+            max-height: 125px; overflow-y: auto; 
+        }
+        
+        .tag {
+            display: flex; align-items: center; background: #eee; color: #333;
+            padding: 4px 10px; margin: 3px; border-radius: 15px; 
+            font-size: 13px;
+            border: 1px solid #ccc;
+        }
+        .tag .remove-tag { margin-left: 6px; color: #999; font-weight: bold; cursor: pointer; }
+
+        #mainInput { 
+            border: none; outline: none; flex: 1; padding: 6px; 
+            font-size: 14px;
+            min-width: 80px; background: transparent;
+        }
+
+        .batch-toolbar { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 12px; border-radius: 12px; margin-bottom: 10px; }
+        .group-container { border-radius: 12px; margin-bottom: 12px; overflow: hidden; border: 1px solid #ddd; }
+        .group-header { padding: 10px 15px; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.03); }
+        .link-wrapper { display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .link-item { flex: 1; display: flex; justify-content: space-between; padding: 15px 5px; text-decoration: none; color: var(--primary); font-size: 16px; }
+        .link-item.visited { color: var(--visited) !important; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; padding: 15px; border-top: 1px solid #ddd; z-index: 100; }
+        .bottom-btn { padding: 15px; border-radius: 12px; border: none; font-size: 16px; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="toggle-zone">
+        <button id="btnComp" class="toggle-btn" ondblclick="toggleComp()">慶</button>
+        <button id="btnIdType" class="toggle-btn" ondblclick="toggleIdType()">訂</button>
+    </div>
+
+    <div class="tag-input-outer" onclick="document.getElementById('mainInput').focus()">
+        <div class="tag-input-container" id="tagContainer">
+            <input type="text" id="mainInput" placeholder="輸入 ID..." autocomplete="off">
+        </div>
+    </div>
+    
+    <div id="batchToolbar" class="batch-toolbar" style="display: none;">
+        <label><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"> 全選</label>
+        <div>
+            <button onclick="deleteSelected()" style="padding: 8px; color: #ea4335; border: none; background: none; font-weight: bold;">刪除</button>
+            <button onclick="groupSelected()" style="padding: 8px; color: #4285f4; border: none; background: none; font-weight: bold;">設為群組</button>
+        </div>
+    </div>
+
+    <div id="linkContainer"></div>
+</div>
+
+<div class="bottom-nav">
+    <button class="bottom-btn" style="background: #4285f4;" onclick="openCheckedLinks()">開啟已勾選</button>
+    <button class="bottom-btn" style="background: #888;" onclick="clearAllData()">清空</button>
+</div>
+
+<script>
+    // ─────────────────────────────────────────────
+    // 資料遷移：統一升級到 v3 格式，並清除舊 key
+    // ─────────────────────────────────────────────
+    function migrateData() {
+        const CURRENT_KEY = 'hp_data_v3';
+
+        // 已經是最新版，直接回傳
+        if (localStorage.getItem(CURRENT_KEY) !== null) return;
+
+        let migrated = null;
+
+        // 嘗試從 v2 遷移：v2 格式假設與 v3 相同（陣列of {id, group}）
+        const v2Raw = localStorage.getItem('hp_data_v2');
+        if (v2Raw !== null) {
+            try {
+                const v2 = JSON.parse(v2Raw);
+                if (Array.isArray(v2)) migrated = v2;
+            } catch (e) { /* 損毀資料，略過 */ }
+            localStorage.removeItem('hp_data_v2');
+        }
+
+        // 嘗試從 v1 遷移：v1 格式假設為純字串陣列 ["id1", "id2", ...]
+        if (migrated === null) {
+            const v1Raw = localStorage.getItem('hp_data');
+            if (v1Raw !== null) {
+                try {
+                    const v1 = JSON.parse(v1Raw);
+                    if (Array.isArray(v1)) {
+                        // 判斷是舊的字串陣列還是已經是物件陣列
+                        if (typeof v1[0] === 'string') {
+                            migrated = v1.map(id => ({ id: id, group: null }));
+                        } else {
+                            migrated = v1; // 已經是物件格式
+                        }
+                    }
+                } catch (e) { /* 損毀資料，略過 */ }
+                localStorage.removeItem('hp_data');
+            }
+        }
+
+        // 將遷移結果寫入 v3（即使是空陣列也寫入，避免下次重複遷移）
+        localStorage.setItem(CURRENT_KEY, JSON.stringify(migrated || []));
+    }
+
+    // 頁面載入時立即執行遷移
+    migrateData();
+
+    // ─────────────────────────────────────────────
+    // 正常初始化
+    // ─────────────────────────────────────────────
+    const tagContainer = document.getElementById('tagContainer');
+    const mainInput = document.getElementById('mainInput');
+    const btnComp = document.getElementById('btnComp');
+    const btnIdType = document.getElementById('btnIdType');
+
+    let state = {
+        comp: localStorage.getItem('hp_comp') || '11', 
+        idType: localStorage.getItem('hp_idtype') || 'CustId',
+        data: JSON.parse(localStorage.getItem('hp_data_v3') || '[]'),
+        groupCounter: parseInt(localStorage.getItem('hp_group_count') || '1')
+    };
+
+    window.onload = function() { renderTags(); updateUI(); };
+
+    mainInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && this.value === '') {
+            if (state.data.length > 0) {
+                state.data.pop();
+                saveAndRender();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = this.value.trim();
+            if (val) { addTag(val); this.value = ''; }
+        }
+    });
+
+    mainInput.addEventListener('input', function() {
+        if (/[\s,，\n\r]/.test(this.value)) {
+            const parts = this.value.split(/[\s,，\n\r]+/);
+            parts.forEach(part => { if (part.trim()) addTag(part.trim()); });
+            this.value = '';
+        }
+    });
+
+    function addTag(id) {
+        if (id && !state.data.find(item => item.id === id)) {
+            state.data.push({ id: id, group: null });
+            saveAndRender();
+            setTimeout(() => { tagContainer.scrollTop = tagContainer.scrollHeight; }, 10);
+        }
+    }
+
+    function removeTag(id) {
+        state.data = state.data.filter(item => item.id !== id);
+        saveAndRender();
+    }
+
+    function groupSelected() {
+        const checkboxes = document.querySelectorAll('.link-checkbox:checked');
+        if (checkboxes.length === 0) return;
+
+        let groupName = prompt("請輸入群組名稱（留空則自動命名）：", "");
+        if (groupName === null) return; 
+        
+        if (groupName.trim() === "") {
+            groupName = "群組" + state.groupCounter;
+            state.groupCounter++;
+            localStorage.setItem('hp_group_count', state.groupCounter);
+        }
+
+        const idsToGroup = Array.from(checkboxes).map(cb => cb.dataset.id);
+        state.data.forEach(item => { if (idsToGroup.includes(item.id)) item.group = groupName; });
+
+        saveAndRender();
+        document.getElementById('selectAll').checked = false;
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('hp_data_v3', JSON.stringify(state.data));
+        renderTags();
+        generateLinks();
+    }
+
+    function renderTags() {
+        tagContainer.querySelectorAll('.tag').forEach(t => t.remove());
+        state.data.forEach((item) => {
+            const span = document.createElement('span');
+            span.className = 'tag';
+            span.innerHTML = `${item.id}<span class="remove-tag" onclick="event.stopPropagation(); removeTag('${item.id}')">×</span>`;
+            tagContainer.insertBefore(span, mainInput);
+        });
+    }
+
+    function generateLinks() {
+        const container = document.getElementById('linkContainer');
+        container.innerHTML = "";
+        if (state.data.length === 0) {
+            document.getElementById('batchToolbar').style.display = "none";
+            return;
+        }
+        document.getElementById('batchToolbar').style.display = "flex";
+
+        const baseUrl = `https://cmweb.homeplus.net.tw/cmweb/Query?IS_QUERY=Y&Compcode=${state.comp}&${state.idType}=`;
+        
+        const hasCustomGroup = state.data.some(d => d.group !== null);
+        const groupedMap = {};
+        
+        state.data.forEach(item => {
+            let g = item.group;
+            if (hasCustomGroup && g === null) g = "未分類";
+            if (g === null) g = "null";
+            if (!groupedMap[g]) groupedMap[g] = [];
+            groupedMap[g].push(item);
+        });
+
+        const customGroups = Object.keys(groupedMap).filter(g => g !== "null" && g !== "未分類");
+        
+        let colorIdx = 0;
+        [...customGroups, "未分類", "null"].forEach(gName => {
+            if (!groupedMap[gName]) return;
+            
+            const groupDiv = document.createElement('div');
+            groupDiv.className = "group-container";
+            
+            let bgColor = "#ffffff";
+            if (gName !== "null" && gName !== "未分類") {
+                bgColor = `var(--bg-color-${colorIdx % 3})`;
+                colorIdx++;
+            }
+            groupDiv.style.backgroundColor = bgColor;
+
+            if (gName !== "null") {
+                const header = document.createElement('div');
+                header.className = "group-header";
+                header.innerHTML = `<input type="checkbox" class="group-checkbox" onclick="toggleGroupSelect('${gName}', this.checked)"><span>${gName}</span>`;
+                groupDiv.appendChild(header);
+            }
+
+            groupedMap[gName].forEach(item => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "link-wrapper";
+                wrapper.innerHTML = `
+                    <div class="cb-container"><input type="checkbox" class="link-checkbox" data-id="${item.id}" data-group="${gName}"></div>
+                    <a href="${baseUrl + item.id}" target="_blank" class="link-item" onclick="this.classList.add('visited')">
+                        <span>${item.id}</span><span>➜</span>
+                    </a>
+                `;
+                groupDiv.appendChild(wrapper);
+            });
+            container.appendChild(groupDiv);
+        });
+    }
+
+    function toggleSelectAll() {
+        const isChecked = document.getElementById('selectAll').checked;
+        document.querySelectorAll('.link-checkbox, .group-checkbox').forEach(cb => cb.checked = isChecked);
+    }
+    function toggleGroupSelect(groupName, isChecked) {
+        document.querySelectorAll(`.link-checkbox[data-group="${groupName}"]`).forEach(cb => cb.checked = isChecked);
+    }
+    function updateUI() {
+        btnComp.innerText = (state.comp === '11') ? "慶" : "港";
+        btnIdType.innerText = (state.idType === 'CustId') ? "訂" : "住";
+        generateLinks();
+    }
+    function toggleComp() { state.comp = (state.comp === '11') ? '13' : '11'; localStorage.setItem('hp_comp', state.comp); updateUI(); }
+    function toggleIdType() { state.idType = (state.idType === 'CustId') ? 'Coss_CustId' : 'CustId'; localStorage.setItem('hp_idtype', state.idType); updateUI(); }
+    function deleteSelected() {
+        const checkboxes = document.querySelectorAll('.link-checkbox:checked');
+        if (checkboxes.length === 0) return;
+        const idsToDelete = Array.from(checkboxes).map(cb => cb.dataset.id);
+        state.data = state.data.filter(item => !idsToDelete.includes(item.id));
+        saveAndRender();
+    }
+    function openCheckedLinks() {
+        const checkboxes = document.querySelectorAll('.link-checkbox:checked');
+        const baseUrl = `https://cmweb.homeplus.net.tw/cmweb/Query?IS_QUERY=Y&Compcode=${state.comp}&${state.idType}=`;
+        checkboxes.forEach((cb, index) => { setTimeout(() => { window.open(baseUrl + cb.dataset.id, '_blank'); }, index * 400); });
+    }
+    function clearAllData() { if (confirm("確定清空？")) { state.data = []; state.groupCounter = 1; localStorage.removeItem('hp_group_count'); saveAndRender(); } }
+
+    // ─── PWA Service Worker 註冊 ───
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .catch(err => console.warn('SW 註冊失敗:', err));
+        });
+    }
+</script>
+
+</body>
+</html>
