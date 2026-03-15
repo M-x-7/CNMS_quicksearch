@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <title>批量查詢v9.1</title>
+    <link rel="manifest" href="manifest.json">
+<style>
+:root {
+    --dark-bg: #1a1a1a;
+    --primary: #4285f4;
+    --visited: #b0b0b0;
+    --bg-color-0: #e3f2fd; 
+    --bg-color-1: #e8f5e9; 
+    --bg-color-2: #fffde7; 
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 10px 10px 150px 10px;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+}
+
+.toggle-zone {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.toggle-btn {
+    padding: 10px 80px;
+    font-size: 32px;
+    border-radius: 6px;
+    border: none;
+    background: var(--dark-bg);
+    color: white;
+    cursor: pointer;
+    text-align: center;
+}
+
+.toggle-btn:hover {
+    opacity: 0.85;
+}
+
+#macSubSelect, #custSubSelect {
+    display: none;
+    padding: 10px 16px;
+    font-size: 22px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: white;
+    color: #333;
+    cursor: pointer;
+}
+
+.tag-input-outer {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: white;
+    padding: 6px;
+    margin-bottom: 15px;
+}
+
+.tag-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.tag {
+    background: #eee;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+#mainInput {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    min-width: 80px;
+}
+
+#inputHint {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.6;
+    padding: 4px 6px;
+    pointer-events: none;
+    display: block;
+    width: 100%;
+}
+
+#inputHint.hidden { display: none; }
+
+.batch-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+}
+
+.cb-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.link-checkbox,
+.group-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.group-container {
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    background: white;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: bold;
+    background: rgba(0,0,0,0.04);
+}
+
+.group-title-text {
+    flex: 1;
+}
+
+.link-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.link-wrapper:hover {
+    background: rgba(0,0,0,0.03);
+}
+
+.link-wrapper.drag-hover {
+    background: rgba(66,133,244,0.12);
+}
+
+.link-item { 
+    flex: 1; 
+    display: flex; 
+    justify-content: space-between; 
+    padding: 10px 15px 10px 16px;
+    text-decoration: none; 
+    color: var(--primary); 
+    font-size: 16px; 
+}
+
+.link-item:hover {
+    text-decoration: underline;
+}
+
+.link-item.visited {
+    color: var(--visited);
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    display: grid;
+    grid-template-columns: 1.5fr 0.7fr 0.7fr;
+    gap: 10px;
+    padding: 15px 30px;
+    border-top: 1px solid #ddd;
+    z-index: 1000;
+}
+
+.bottom-btn {
+    padding: 8px 2px;
+    border-radius: 6px;
+    border: none;
+    font-size: 30px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+}
+
+.bottom-btn:hover {
+    opacity: 0.85;
+}
+
+/* 複製按鈕 */
+#copyBtn {
+    padding: 8px 2px;
+    border-radius: 6px;
+    border: none;
+    font-size: 30px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    background: #34a853;
+}
+#copyBtn:hover { opacity: 0.85; }
+
+/* 歷史紀錄按鈕 */
+#historyBtn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: var(--dark-bg);
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#historyBtn:hover { opacity: 0.8; }
+
+/* 歷史面板 */
+#historyPanel {
+    display: none;
+    position: fixed;
+    top: 62px;
+    right: 12px;
+    width: 280px;
+    max-height: 420px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    z-index: 2000;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+#historyPanel.open { display: flex; }
+
+#historyHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    font-weight: bold;
+    color: #333;
+}
+
+#historyClearBtn {
+    font-size: 11px;
+    color: #ea4335;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+#historyList {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    font-size: 13px;
+    gap: 8px;
+    cursor: pointer;
+}
+.history-item:hover { background: #f5f5f5; }
+
+.history-id {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #333;
+}
+
+.history-time {
+    font-size: 11px;
+    color: #999;
+    white-space: nowrap;
+}
+
+.history-add {
+    font-size: 16px;
+    color: #4285f4;
+    padding: 0 2px;
+}
+.history-add:hover { color: #1a73e8; }
+
+.history-badge {
+    font-size: 10px;
+    color: #fff;
+    background: #888;
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#copyToast {
+    display: none;
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 3000;
+    pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<button id="historyBtn" onclick="toggleHistory()" title="最近查詢">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+        <polyline points="12 7 12 12 15 14"/>
+    </svg>
+</button>
+
+<div id="historyPanel">
+    <div id="historyHeader">
+        <span>最近查詢（最多20筆）</span>
+        <button id="historyClearBtn" onclick="clearHistory()">清除</button>
+    </div>
+    <div id="historyList"></div>
+</div>
+
+<div id="copyToast">已複製！</div>
+
+<div class="container">
+
+<div class="toggle-zone">
+    <button id="btnComp" class="toggle-btn" ondblclick="toggleComp()">港</button>
+    <button id="btnIdType" class="toggle-btn" ondblclick="toggleIdType()">訂</button>
+    <select id="macSubSelect" onchange="onMacSubChange()">
+        <option value="Default">Default</option>
+        <option value="Traffic">Traffic</option>
+        <option value="Status">Status</option>
+        <option value="Quality">Quality</option>
+    </select>
+    <select id="custSubSelect" onchange="onCustSubChange()">
+        <option value="Default">Default</option>
+        <option value="Status">Status</option>
+    </select>
+</div>
+
+<div class="tag-input-outer" onclick="document.getElementById('mainInput').focus()">
+    <div class="tag-input-container" id="tagContainer">
+        <input type="text" id="mainInput" autocomplete="off">
+    </div>
+    <div id="inputHint">
+        在這裡輸入編號 &nbsp;·&nbsp; 上方按鈕雙擊可切換 &nbsp;·&nbsp; 一次開啟多分頁需要手動允許彈出式視窗 &nbsp;·&nbsp; 按 SHIFT 可多選
+    </div>
+</div>
+
+<div id="batchToolbar" class="batch-toolbar" style="display: none;">
+    <div class="cb-container">
+        <input type="checkbox" id="selectAll" class="group-checkbox">
+        <span>全選</span>
+    </div>
+    <div>
+        <button onclick="deleteSelected()" style="color:#ea4335;border:none;background:none;">刪除</button>
+        <button onclick="groupSelected()" style="color:#4285f4;border:none;background:none;">設為群組</button>
+    </div>
+</div>
+
+<div id="linkContainer"></div>
+
+<div class="bottom-nav">
+    <button class="bottom-btn" style="background:#4285f4;" onclick="openCheckedLinks()">開啟已勾選</button>
+    <button id="copyBtn" onclick="copyCheckedIds()">複製</button>
+    <button class="bottom-btn" style="background:#888;" onclick="clearAllData()">清空</button>
+</div>
+
+</div>
+
+<script>
+const tagContainer = document.getElementById('tagContainer');
+const mainInput = document.getElementById('mainInput');
+const btnComp = document.getElementById('btnComp');
+const btnIdType = document.getElementById('btnIdType');
+
+let lastCheckedIndex = -1;
+let isDragging = false;
+let dragStartIndex = -1;
+let dragTargetState = true;
+
+let state = {
+    comp: localStorage.getItem('hp_comp') || '11',
+    idType: localStorage.getItem('hp_idtype') || 'CustId',
+    data: JSON.parse(localStorage.getItem('hp_data_v3') || '[]'),
+    groupCounter: parseInt(localStorage.getItem('hp_group_count') || '1'),
+    macSub: localStorage.getItem('hp_mac_sub') || 'Default',
+    custSub: localStorage.getItem('hp_cust_sub') || 'Default',
+    history: JSON.parse(localStorage.getItem('hp_history') || '[]')
+};
+
+document.addEventListener('mouseup', function () {
+    isDragging = false;
+    dragStartIndex = -1;
+    document.querySelectorAll('.link-wrapper.drag-hover')
+        .forEach(el => el.classList.remove('drag-hover'));
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        openCheckedLinks();
+    }
+});
+
+window.onload = function () {
+    renderTags();
+    updateUI();
+};
+
+/* ===========================
+   熱區綁定核心
+=========================== */
+
+function bindHotzone(container) {
+    container.addEventListener('click', function (e) {
+
+        const cb = container.querySelector('input[type="checkbox"]');
+        if (!cb) return;
+
+        if (e.target === cb) return;
+
+        cb.checked = !cb.checked;
+        cb.dispatchEvent(new Event('change'));
+    });
+}
+
+/* ===========================
+   輸入處理
+=========================== */
+
+mainInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Backspace' && this.value === '') {
+        if (state.data.length > 0) {
+            state.data.pop();
+            saveAndRender();
+        }
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = this.value.trim();
+        if (val) {
+            addTag(val);
+            this.value = '';
+        }
+    }
+});
+
+mainInput.addEventListener('input', function () {
+    updateHint();
+    if (/[\s,，\n\r]/.test(this.value)) {
+        const parts = this.value.split(/[\s,，\n\r]+/);
+        parts.forEach(part => {
+            if (part.trim()) addTag(part.trim());
+        });
+        this.value = '';
+    }
+});
+
+function addTag(id) {
+    if (id && !state.data.find(item => item.id === id)) {
+        state.data.push({ id: id, group: null });
+        saveAndRender();
+    }
+}
+
+function removeTag(id) {
+    state.data = state.data.filter(item => item.id !== id);
+    saveAndRender();
+}
+
+function updateHint() {
+    const hint = document.getElementById('inputHint');
+    if (!hint) return;
+    const hasTag = state.data.length > 0;
+    const hasInput = mainInput.value.length > 0;
+    hint.classList.toggle('hidden', hasTag || hasInput);
+}
+
+function saveAndRender() {
+    localStorage.setItem('hp_data_v3', JSON.stringify(state.data));
+    renderTags();
+    generateLinks();
+    updateHint();
+}
+
+/* ===========================
+   標籤顯示
+=========================== */
+
+function renderTags() {
+    tagContainer.querySelectorAll('.tag').forEach(t => t.remove());
+
+    state.data.forEach(item => {
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.innerHTML = `
+            ${item.id}
+            <span class="remove-tag" onclick="removeTag('${item.id}')">×</span>
+        `;
+        tagContainer.insertBefore(span, mainInput);
+    });
+}
+
+/* ===========================
+   勾選同步邏輯
+=========================== */
+
+function syncSelectAllState() {
+    const all = document.querySelectorAll('.link-checkbox');
+    const checked = document.querySelectorAll('.link-checkbox:checked');
+    const selectAll = document.getElementById('selectAll');
+
+    if (all.length === 0) {
+        selectAll.checked = false;
+        return;
+    }
+
+    selectAll.checked = (all.length === checked.length);
+
+    // 同步每個群組的 checkbox
+    document.querySelectorAll('.group-checkbox[data-group]').forEach(groupCb => {
+        const groupName = groupCb.dataset.group;
+        const groupAll = document.querySelectorAll(`.link-checkbox[data-group="${groupName}"]`);
+        const groupChecked = document.querySelectorAll(`.link-checkbox[data-group="${groupName}"]:checked`);
+        groupCb.checked = groupAll.length > 0 && groupAll.length === groupChecked.length;
+    });
+}
+
+function toggleAll(isChecked) {
+    document.querySelectorAll('.link-checkbox, .group-checkbox')
+        .forEach(cb => cb.checked = isChecked);
+}
+
+function toggleGroup(groupName, isChecked) {
+    document.querySelectorAll(
+        `.link-checkbox[data-group="${groupName}"]`
+    ).forEach(cb => cb.checked = isChecked);
+}
+
+/* ===========================
+   生成連結
+=========================== */
+
+function generateLinks() {
+
+    const container = document.getElementById('linkContainer');
+    container.innerHTML = "";
+
+    if (state.data.length === 0) {
+        document.getElementById('batchToolbar').style.display = "none";
+        return;
+    }
+
+    document.getElementById('batchToolbar').style.display = "flex";
+
+    const baseUrl = buildBaseUrl();
+
+    const grouped = {};
+    state.data.forEach(item => {
+        const g = item.group || "未分類";
+        if (!grouped[g]) grouped[g] = [];
+        grouped[g].push(item);
+    });
+
+    let colorIdx = 0;
+
+    Object.keys(grouped).forEach(groupName => {
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = "group-container";
+
+        if (groupName !== "未分類") {
+            groupDiv.style.backgroundColor =
+                `var(--bg-color-${colorIdx % 3})`;
+            colorIdx++;
+        }
+
+        const header = document.createElement('div');
+        header.className = "group-header";
+
+        header.innerHTML = `
+            <div class="cb-container">
+                <input type="checkbox"
+                       class="group-checkbox"
+                       data-group="${groupName}">
+            </div>
+            <div class="group-title-text">${groupName}</div>
+        `;
+
+        groupDiv.appendChild(header);
+
+        const groupCheckbox = header.querySelector('.group-checkbox');
+        bindHotzone(header.querySelector('.cb-container'));
+
+        groupCheckbox.addEventListener('change', function () {
+            toggleGroup(groupName, this.checked);
+            syncSelectAllState();
+        });
+
+        let seq = 1;
+
+        grouped[groupName].forEach(item => {
+
+            const wrapper = document.createElement('div');
+            wrapper.className = "link-wrapper";
+
+            const fmtId = formatId(item.id);
+            wrapper.innerHTML = `
+                <div class="cb-container">
+                    <input type="checkbox"
+                           class="link-checkbox"
+                           data-id="${item.id}"
+                           data-group="${groupName}">
+                </div>
+                <a href="${baseUrl + fmtId}"
+                   target="_blank"
+                   class="link-item"
+                   onclick="this.classList.add('visited')">
+                    <span>${seq++}. ${item.id}</span>
+                    <span>➜</span>
+                </a>
+            `;
+
+            groupDiv.appendChild(wrapper);
+
+            const itemCheckbox =
+                wrapper.querySelector('.link-checkbox');
+
+            const allItems = () => Array.from(document.querySelectorAll('.link-checkbox'));
+
+            bindHotzone(wrapper.querySelector('.cb-container'));
+
+            itemCheckbox.addEventListener('click', function (e) {
+                const all = allItems();
+                const currentIndex = all.indexOf(this);
+
+                if (e.shiftKey && lastCheckedIndex !== -1) {
+                    const from = Math.min(lastCheckedIndex, currentIndex);
+                    const to   = Math.max(lastCheckedIndex, currentIndex);
+                    const targetState = this.checked;
+                    all.slice(from, to + 1).forEach(cb => {
+                        cb.checked = targetState;
+                    });
+                }
+
+                lastCheckedIndex = currentIndex;
+                syncSelectAllState();
+            });
+
+            // 拖曳劃選
+            wrapper.addEventListener('mousedown', function (e) {
+                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
+                // 只記錄起始點，不改狀態，等確認有拖曳才動作
+                dragStartIndex = allItems().indexOf(itemCheckbox);
+                dragTargetState = !itemCheckbox.checked;
+                isDragging = false; // 還不算拖曳，等 mouseenter 才確認
+            });
+
+            wrapper.addEventListener('mouseenter', function () {
+                if (dragStartIndex === -1) return;
+                const all = allItems();
+                const currentIndex = all.indexOf(itemCheckbox);
+                if (currentIndex === dragStartIndex) return;
+
+                // 進入不同列才算真正開始拖曳
+                isDragging = true;
+                const from = Math.min(dragStartIndex, currentIndex);
+                const to   = Math.max(dragStartIndex, currentIndex);
+                all.forEach((cb, i) => {
+                    cb.closest('.link-wrapper').classList.remove('drag-hover');
+                    if (i >= from && i <= to) {
+                        cb.checked = dragTargetState;
+                        cb.closest('.link-wrapper').classList.add('drag-hover');
+                    }
+                });
+                syncSelectAllState();
+            });
+        });
+
+        container.appendChild(groupDiv);
+    });
+
+    syncSelectAllState();
+}
+
+/* ===========================
+   功能按鈕
+=========================== */
+
+document.getElementById('selectAll')
+    .addEventListener('change', function () {
+        toggleAll(this.checked);
+    });
+
+bindHotzone(
+    document.querySelector('#selectAll')
+        .closest('.cb-container')
+);
+
+function groupSelected() {
+    const checked =
+        document.querySelectorAll('.link-checkbox:checked');
+    if (checked.length === 0) return;
+
+    let groupName = prompt("請輸入群組名稱：", "");
+    if (groupName === null) return;
+
+    if (groupName.trim() === "") {
+        groupName = "群組" + state.groupCounter++;
+        localStorage.setItem('hp_group_count', state.groupCounter);
+    }
+
+    const ids =
+        Array.from(checked).map(cb => cb.dataset.id);
+
+    state.data.forEach(item => {
+        if (ids.includes(item.id))
+            item.group = groupName;
+    });
+
+    saveAndRender();
+}
+
+function deleteSelected() {
+    const checked =
+        document.querySelectorAll('.link-checkbox:checked');
+    if (checked.length === 0) return;
+
+    if (!confirm(`確定刪除這 ${checked.length} 筆？`))
+        return;
+
+    const ids =
+        Array.from(checked).map(cb => cb.dataset.id);
+
+    state.data =
+        state.data.filter(item => !ids.includes(item.id));
+
+    saveAndRender();
+}
+
+function openCheckedLinks() {
+    const checked = document.querySelectorAll('.link-checkbox:checked');
+
+    if (checked.length === 0)
+        return alert("請先勾選項目");
+
+    const ids = Array.from(checked).map(cb => cb.dataset.id);
+    addToHistory(ids);
+
+    // 其他模式維持 GET
+    const baseUrl = buildBaseUrl();
+    ids.forEach((id, index) => {
+        setTimeout(() => {
+            window.open(baseUrl + formatId(id), '_blank');
+        }, index * 400);
+    });
+}
+
+/* ===========================
+   歷史紀錄
+=========================== */
+
+function addToHistory(ids) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+    const timeStr = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    const timestamp = `${dateStr} ${timeStr}`;
+
+    const compLabel = (state.comp === '11') ? '慶' : '港';
+    const typeLabel = ID_TYPE_CYCLE.find(t => t.value === state.idType)?.label || state.idType;
+    let modeLabel = typeLabel;
+    if (state.idType === 'CMMac' && state.macSub !== 'Default') {
+        modeLabel = `MAC(${state.macSub})`;
+    } else if (state.idType === 'CustId' && state.custSub !== 'Default') {
+        modeLabel = `訂(${state.custSub})`;
+    }
+
+    ids.forEach(id => {
+        state.history = state.history.filter(h => h.id !== id);
+        state.history.unshift({ id, time: timestamp, comp: compLabel, mode: modeLabel });
+    });
+    state.history = state.history.slice(0, 20);
+    localStorage.setItem('hp_history', JSON.stringify(state.history));
+    renderHistory();
+}
+
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+    if (state.history.length === 0) {
+        list.innerHTML = '<div style="padding:16px;text-align:center;color:#999;font-size:13px;">尚無紀錄</div>';
+        return;
+    }
+    state.history.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        const badge = item.comp && item.mode
+            ? `<span class="history-badge">${item.comp}·${item.mode}</span>`
+            : '';
+        div.innerHTML = `
+            <span class="history-id" title="${item.id}">${item.id}</span>
+            ${badge}
+            <span class="history-time">${item.time || ''}</span>
+            <span class="history-add" title="加入清單" onclick="addTagFromHistory('${item.id}', event)">＋</span>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function addTagFromHistory(id, e) {
+    e.stopPropagation();
+    addTag(id);
+}
+
+function clearHistory() {
+    state.history = [];
+    localStorage.removeItem('hp_history');
+    renderHistory();
+}
+
+function toggleHistory() {
+    const panel = document.getElementById('historyPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) renderHistory();
+}
+
+// 點面板外關閉
+document.addEventListener('click', function(e) {
+    const panel = document.getElementById('historyPanel');
+    const btn = document.getElementById('historyBtn');
+    if (!panel.contains(e.target) && !btn.contains(e.target)) {
+        panel.classList.remove('open');
+    }
+});
+
+/* ===========================
+   複製勾選 ID
+=========================== */
+
+function copyCheckedIds() {
+    const checked = document.querySelectorAll('.link-checkbox:checked');
+    if (checked.length === 0) return alert('請先勾選項目');
+    const ids = Array.from(checked).map(cb => cb.dataset.id).join(',');
+    navigator.clipboard.writeText(ids).then(() => {
+        const toast = document.getElementById('copyToast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1800);
+    });
+}
+
+const ID_TYPE_CYCLE = [
+    { value: 'CMMac',       label: 'MAC' },
+    { value: 'CustId',      label: '訂' },
+    { value: 'Coss_CustId', label: '住' },
+];
+
+function buildBaseUrl() {
+    if (state.idType === 'CustId') {
+        if (state.custSub === 'Status') {
+            return `https://cmweb.homeplus.net.tw/cmweb/QueryCM?IS_QUERY=Y&Compcode=${state.comp}&CustId=`;
+        }
+        return `https://cmweb.homeplus.net.tw/cmweb/Query?IS_QUERY=Y&Compcode=${state.comp}&CustId=`;
+    }
+    if (state.idType === 'CMMac') {
+        switch (state.macSub) {
+            case 'Traffic':
+                return `https://cmweb.homeplus.net.tw/cmweb/QueryCMMrtg?IS_QUERY=Y&Compcode=${state.comp}&CMMac=`;
+            case 'Status':
+                return `https://cmweb.homeplus.net.tw/cmweb/QueryCM?IS_QUERY=Y&Compcode=${state.comp}&CMMac=`;
+            case 'Quality':
+                return `https://cmweb.homeplus.net.tw/cmweb/chartClickhouse10?IS_QUERY=Y&Compcode=${state.comp}&CMMac=`;
+            default:
+                return `https://cmweb.homeplus.net.tw/cmweb/Query?IS_QUERY=Y&Compcode=${state.comp}&CMMac=`;
+        }
+    }
+    return `https://cmweb.homeplus.net.tw/cmweb/Query?IS_QUERY=Y&Compcode=${state.comp}&${state.idType}=`;
+}
+
+function formatId(id) {
+    // MAC 模式下一律去掉冒號
+    if (state.idType === 'CMMac') {
+        return id.replace(/:/g, '');
+    }
+    return id;
+}
+
+function updateUI() {
+    btnComp.innerText =
+        (state.comp === '11') ? "慶" : "港";
+
+    const current = ID_TYPE_CYCLE.find(t => t.value === state.idType)
+        || ID_TYPE_CYCLE[0];
+    btnIdType.innerText = current.label;
+
+    const macSel = document.getElementById('macSubSelect');
+    const custSel = document.getElementById('custSubSelect');
+    if (state.idType === 'CMMac') {
+        macSel.style.display = 'block';
+        macSel.value = state.macSub;
+        custSel.style.display = 'none';
+    } else if (state.idType === 'CustId') {
+        custSel.style.display = 'block';
+        custSel.value = state.custSub;
+        macSel.style.display = 'none';
+    } else {
+        macSel.style.display = 'none';
+        custSel.style.display = 'none';
+    }
+
+    generateLinks();
+}
+
+function onMacSubChange() {
+    state.macSub = document.getElementById('macSubSelect').value;
+    localStorage.setItem('hp_mac_sub', state.macSub);
+    generateLinks();
+}
+
+function onCustSubChange() {
+    state.custSub = document.getElementById('custSubSelect').value;
+    localStorage.setItem('hp_cust_sub', state.custSub);
+    generateLinks();
+}
+
+function toggleComp() {
+    state.comp =
+        (state.comp === '11') ? '13' : '11';
+
+    localStorage.setItem('hp_comp', state.comp);
+    updateUI();
+}
+
+function toggleIdType() {
+    const idx = ID_TYPE_CYCLE.findIndex(t => t.value === state.idType);
+    const next = ID_TYPE_CYCLE[(idx + 1) % ID_TYPE_CYCLE.length];
+    state.idType = next.value;
+
+    localStorage.setItem('hp_idtype', state.idType);
+    updateUI();
+}
+
+function clearAllData() {
+    if (confirm("確定清空？")) {
+        state.data = [];
+        state.groupCounter = 1;
+        localStorage.removeItem('hp_group_count');
+        saveAndRender();
+    }
+}
+</script>
+
+</body></html>
