@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FN 工具進階版</title>
+<style>
+body {
+    font-family: Arial;
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+#modeBtn {
+    padding: 10px 20px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+#inputBox {
+    width: 200px;
+    padding: 8px;
+    font-size: 16px;
+}
+
+#tags {
+    margin-top: 15px;
+}
+
+.tag {
+    display: inline-block;
+    padding: 6px 10px;
+    margin: 5px;
+    background: #fff;
+    border: 1px solid #333;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#urlBox {
+    margin-top: 20px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ccc;
+    word-break: break-all;
+}
+
+#goBtn {
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<button id="modeBtn">模式：CL（雙擊切換）</button>
+<br>
+<input id="inputBox" placeholder="輸入5位數按 Enter">
+<div id="tags"></div>
+<div id="urlBox"></div>
+<button id="goBtn">前往下載</button>
+
+<script>
+let mode = "CL";
+let data = [];
+
+const modeConfig = {
+    CL: { so: 720 },
+    GD: { so: 730 }
+};
+
+const modeBtn = document.getElementById("modeBtn");
+const inputBox = document.getElementById("inputBox");
+const tagsDiv = document.getElementById("tags");
+const urlBox = document.getElementById("urlBox");
+const goBtn = document.getElementById("goBtn");
+
+// 雙擊切換模式
+modeBtn.ondblclick = () => {
+    mode = (mode === "CL") ? "GD" : "CL";
+    modeBtn.innerText = "模式：" + mode + "（雙擊切換）";
+    updateURL();
+};
+
+// 輸入新增
+inputBox.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        let val = inputBox.value.trim();
+
+        if (/^\d{5}$/.test(val) && !data.includes(val)) {
+            data.push(val);
+            renderTags();
+            updateURL();
+        }
+
+        inputBox.value = "";
+    }
+});
+
+// 顯示標籤
+function renderTags() {
+    tagsDiv.innerHTML = "";
+
+    data.forEach((item, index) => {
+        let div = document.createElement("div");
+        div.className = "tag";
+        div.innerText = item;
+
+        // 點擊刪除
+        div.onclick = () => {
+            data.splice(index, 1);
+            renderTags();
+            updateURL();
+        };
+
+        tagsDiv.appendChild(div);
+    });
+}
+
+// 更新 URL
+function updateURL() {
+    let config = modeConfig[mode];
+    let so = config.so;
+
+    let base = `https://r1.homeplus.net.tw/NMS/FNCustInfo?so=${so}`;
+    let params = data.map(x => `fn[]=${x}`).join("&");
+
+    let url = base;
+    if (params) url += "&" + params;
+
+    url += "&_columns_=cmmac%2Cfn&_export_=all";
+
+    urlBox.innerText = url;
+}
+
+// 前往下載
+goBtn.onclick = () => {
+    let url = urlBox.innerText;
+    if (url) window.open(url, "_blank");
+};
+</script>
+
+</body>
+</html>
