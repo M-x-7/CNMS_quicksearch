@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0056)https://m-x-7.github.io/CNMS_quicksearch/mac_downloader/ -->
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FN 工具進階版</title>
 <style>
@@ -52,7 +52,7 @@ body {
     font-size: 16px;
 }
 </style>
-</head>
+<link type="text/css" rel="stylesheet" id="dark-mode-custom-link"><link type="text/css" rel="stylesheet" id="dark-mode-general-link"><style lang="en" type="text/css" id="dark-mode-custom-style"></style><style lang="en" type="text/css" id="dark-mode-native-style"></style><style lang="en" type="text/css" id="dark-mode-native-sheet"></style></head>
 
 <body>
 
@@ -120,21 +120,24 @@ function renderTags() {
     });
 }
 
-// 更新 URL
 function updateURL() {
     let config = modeConfig[mode];
     let so = config.so;
+    
+    // 1. 基礎網址與 SO 參數
+    let url = `https://r1.homeplus.net.tw/NMS/FNCustInfo?so=${so}`;
 
-    let base = `https://r1.homeplus.net.tw/NMS/FNCustInfo?so=${so}`;
-    let params = data.map(x => `fn[]=${x}`).join("&");
-
-    let url = base;
-    if (params) url += "&" + params;
-
-    url += "&_columns_=cmmac%2Cfn&_export_=all";
-
+    // 2. 處理 fn[] 參數 (不帶數字索引，並進行 URL 編碼)
+    if (data.length > 0) {
+        // 使用 fn%5B%5D 代表 fn[]
+        let params = data.map(val => `fn%5B%5D=${val}`).join("&");
+        url += "&" + params;
+    }
+    url += "&_columns_=SubsID%2Caddress%2Ccmmac%2Cfn%2Cso%2Cswversion&_export_=all";
+    
     urlBox.innerText = url;
 }
+
 
 // 前往下載
 goBtn.onclick = () => {
@@ -143,5 +146,5 @@ goBtn.onclick = () => {
 };
 </script>
 
-</body>
-</html>
+
+</body></html>
