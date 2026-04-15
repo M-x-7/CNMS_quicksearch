@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- saved from url=(0056)https://m-x-7.github.io/CNMS_quicksearch/mac_downloader/ -->
-<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="zh-TW">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FN 工具進階版</title>
+<title>FN MAC下載工具</title>
 <style>
 body {
     font-family: Arial;
@@ -11,140 +11,246 @@ body {
     background: #f5f5f5;
 }
 
-#modeBtn {
-    padding: 10px 20px;
-    font-size: 16px;
-    margin-bottom: 15px;
-    cursor: pointer;
+#inputBox {
+    width: 280px;
+    padding: 12px 14px;
+    font-size: 22px;
+    border: 2px solid #aaa;
+    border-radius: 6px;
+    outline: none;
 }
 
-#inputBox {
-    width: 200px;
-    padding: 8px;
-    font-size: 16px;
+#inputBox:focus {
+    border-color: #1a7fd4;
 }
 
 #tags {
     margin-top: 15px;
+    min-height: 20px;
 }
 
 .tag {
     display: inline-block;
-    padding: 6px 10px;
-    margin: 5px;
+    padding: 10px 18px;
+    margin: 6px;
     background: #fff;
-    border: 1px solid #333;
-    border-radius: 5px;
+    border: 2px solid #333;
+    border-radius: 8px;
     cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    user-select: none;
 }
 
-#urlBox {
+.tag.so730 {
+    border-color: #1a7fd4;
+    color: #1a7fd4;
+    background: #eef5fd;
+}
+
+.tag.so720 {
+    border-color: #e07b00;
+    color: #e07b00;
+    background: #fff8f0;
+}
+
+.tag:hover {
+    opacity: 0.6;
+}
+
+#linksArea {
     margin-top: 20px;
-    padding: 10px;
+}
+
+.link-block {
+    margin-bottom: 12px;
+    padding: 12px 15px;
     background: #fff;
     border: 1px solid #ccc;
-    word-break: break-all;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-#goBtn {
-    margin-top: 15px;
-    padding: 10px 20px;
-    font-size: 16px;
+.link-label {
+    font-weight: bold;
+    white-space: nowrap;
+    font-size: 14px;
+}
+
+.link-label.so730 { color: #1a7fd4; }
+.link-label.so720 { color: #e07b00; }
+
+.link-url {
+    flex: 1;
+    word-break: break-all;
+    font-size: 13px;
+    color: #333;
+}
+
+.dl-btn {
+    padding: 7px 14px;
+    font-size: 14px;
+    background: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dl-btn:hover { background: #388e3c; }
+
+#allBtn {
+    margin-top: 10px;
+    padding: 10px 24px;
+    font-size: 15px;
+    background: #1a7fd4;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: none;
+}
+
+#allBtn:hover { background: #145fa0; }
+
+.tag-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.row-label {
+    font-size: 15px;
+    font-weight: bold;
+    margin-right: 4px;
+    white-space: nowrap;
+}
+
+.row-label.so730 { color: #1a7fd4; }
+.row-label.so720 { color: #e07b00; }
+
+.hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 6px;
 }
 </style>
-<link type="text/css" rel="stylesheet" id="dark-mode-custom-link"><link type="text/css" rel="stylesheet" id="dark-mode-general-link"><style lang="en" type="text/css" id="dark-mode-custom-style"></style><style lang="en" type="text/css" id="dark-mode-native-style"></style><style lang="en" type="text/css" id="dark-mode-native-sheet"></style></head>
-
+</head>
 <body>
 
-<button id="modeBtn">模式：CL（雙擊切換）</button>
-<br>
-<input id="inputBox" placeholder="輸入5位數按 Enter">
+<input id="inputBox" placeholder="輸入5位數按 Enter" autofocus>
+<div class="hint">點擊標籤可刪除</div>
 <div id="tags"></div>
-<div id="urlBox"></div>
-<button id="goBtn">前往下載</button>
+<div id="linksArea"></div>
+<button id="allBtn">全部下載</button>
 
 <script>
-let mode = "CL";
-let data = [];
+let data = []; // [{val, so}]
 
-const modeConfig = {
-    CL: { so: 720 },
-    GD: { so: 730 }
-};
+// 判斷 so 值，不符合兩組的回傳 null（略過）
+function getSo(val) {
+    const prefix = val.substring(0, 2);
+    if (["00","01","02","06","12"].includes(prefix)) return 730;
+    if (["03","04","05","07","11","13"].includes(prefix)) return 720;
+    return null;
+}
 
-const modeBtn = document.getElementById("modeBtn");
-const inputBox = document.getElementById("inputBox");
-const tagsDiv = document.getElementById("tags");
-const urlBox = document.getElementById("urlBox");
-const goBtn = document.getElementById("goBtn");
+const inputBox  = document.getElementById("inputBox");
+const tagsDiv   = document.getElementById("tags");
+const linksArea = document.getElementById("linksArea");
+const allBtn    = document.getElementById("allBtn");
 
-// 雙擊切換模式
-modeBtn.ondblclick = () => {
-    mode = (mode === "CL") ? "GD" : "CL";
-    modeBtn.innerText = "模式：" + mode + "（雙擊切換）";
-    updateURL();
-};
-
-// 輸入新增
 inputBox.addEventListener("keydown", function(e) {
     if (e.key === "Enter") {
-        let val = inputBox.value.trim();
-
-        if (/^\d{5}$/.test(val) && !data.includes(val)) {
-            data.push(val);
-            renderTags();
-            updateURL();
+        const val = inputBox.value.trim();
+        const so = getSo(val);
+        if (/^\d{5}$/.test(val) && so !== null && !data.find(d => d.val === val)) {
+            data.push({ val, so });
+            render();
         }
-
         inputBox.value = "";
     }
 });
 
-// 顯示標籤
-function renderTags() {
-    tagsDiv.innerHTML = "";
-
-    data.forEach((item, index) => {
-        let div = document.createElement("div");
-        div.className = "tag";
-        div.innerText = item;
-
-        // 點擊刪除
-        div.onclick = () => {
-            data.splice(index, 1);
-            renderTags();
-            updateURL();
-        };
-
-        tagsDiv.appendChild(div);
-    });
-}
-
-function updateURL() {
-    let config = modeConfig[mode];
-    let so = config.so;
-    
-    // 1. 基礎網址與 SO 參數
+function buildURL(so, items) {
     let url = `https://r1.homeplus.net.tw/NMS/FNCustInfo?so=${so}`;
-
-    // 2. 處理 fn[] 參數 (不帶數字索引，並進行 URL 編碼)
-    if (data.length > 0) {
-        // 使用 fn%5B%5D 代表 fn[]
-        let params = data.map(val => `fn%5B%5D=${val}`).join("&");
-        url += "&" + params;
-    }
-    url += "&_columns_=SubsID%2Caddress%2Ccmmac%2Cfn%2Cso%2Cswversion&_export_=all";
-    
-    urlBox.innerText = url;
+    items.forEach((item, i) => {
+        url += `&fn[${i}]=${item.val}`;
+    });
+    url += "&_columns_=ServiceName%2CSubsID%2Caddress%2Ccmmac%2Cfn%2Cso%2Cswversion&_export_=all";
+    return url;
 }
 
+function renderTagRow(so, items) {
+    if (items.length === 0) return;
+    const label = so === 730 ? "GD" : "CL";
+    const row = document.createElement("div");
+    row.className = "tag-row";
+    const rowLabel = document.createElement("span");
+    rowLabel.className = "row-label so" + so;
+    rowLabel.innerText = label + "：";
+    row.appendChild(rowLabel);
+    items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "tag so" + item.so;
+        div.title = "點擊刪除";
+        div.innerText = item.val;
+        div.onclick = () => {
+            const idx = data.indexOf(item);
+            data.splice(idx, 1);
+            render();
+        };
+        row.appendChild(div);
+    });
+    tagsDiv.appendChild(row);
+}
 
-// 前往下載
-goBtn.onclick = () => {
-    let url = urlBox.innerText;
-    if (url) window.open(url, "_blank");
-};
+function render() {
+    // --- 標籤區 ---
+    tagsDiv.innerHTML = "";
+    const gd = data.filter(d => d.so === 730);
+    const cl = data.filter(d => d.so === 720);
+    renderTagRow(730, gd);
+    renderTagRow(720, cl);
+
+    // --- 連結區 ---
+    linksArea.innerHTML = "";
+    const groups = {};
+    data.forEach(item => {
+        if (!groups[item.so]) groups[item.so] = [];
+        groups[item.so].push(item);
+    });
+
+    const soList = Object.keys(groups).map(Number).sort((a,b) => b - a); // 730 先
+
+    soList.forEach(so => {
+        const items = groups[so];
+        const url = buildURL(so, items);
+        const label = so === 730 ? "GD (so=730)" : "CL (so=720)";
+        const cls = "so" + so;
+
+        const block = document.createElement("div");
+        block.className = "link-block";
+        block.innerHTML = `
+            <span class="link-label ${cls}">${label}</span>
+            <span class="link-url">${url}</span>
+            <button class="dl-btn">下載</button>
+        `;
+        block.querySelector(".dl-btn").onclick = () => window.open(url, "_blank");
+        linksArea.appendChild(block);
+    });
+
+    // --- 全部下載按鈕 ---
+    allBtn.style.display = soList.length > 1 ? "inline-block" : "none";
+    allBtn.onclick = () => {
+        soList.forEach(so => window.open(buildURL(so, groups[so]), "_blank"));
+    };
+}
 </script>
-
-
-</body></html>
+</body>
+</html>
